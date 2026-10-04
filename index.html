@@ -262,7 +262,7 @@
         <div class="bible-display" id="displayText"></div>
 
         <div class="feedback-msg" id="practiceFeedback">🎉 非常好！再來一句吧！</div>
-        <button class="btn-next" id="btnPracticeNext" onclick="loadRandomPracticeVerse()">Next 下一句 ➔</button>
+        <button class="btn-next" id="btnPracticeNext" onclick="loadRandomPracticeVerse()">Next 下一句 ➔ (Enter)</button>
         <button class="btn-skip" id="btnPracticeSkip" onclick="loadRandomPracticeVerse()">Skip 練習下一句 ↷</button>
     </div>
 
@@ -288,7 +288,7 @@
 
             <div class="bible-display" id="gameVerseText"></div>
 
-            <button class="btn-next" id="btnGameNext" onclick="nextQuestion()">完全正確！Next 下一句 ➔</button>
+            <button class="btn-next" id="btnGameNext" onclick="nextQuestion()">完全正確！Next 下一句 ➔ (Enter)</button>
             <button class="btn-skip" id="btnGameSkip" onclick="skipQuestion()">Skip 往下一句 ↷</button>
         </div>
 
@@ -312,7 +312,7 @@
         "箴言 3:5-6": "你要專心仰賴耶和華，不可依靠自己的聰明，在你一切所行的事上，都要認定他，他必指引你的路。",
         "箴言 9:10": "敬畏耶和華是智慧的開端；認識至聖者便是聰明。",
         "馬太福音 5:3": "虛心的人有福了！因為天國是他們的。",
-        "馬太福音 5:16": "你們的光也當這樣照在人前，叫他們看見你們的好行為，便將榮耀歸給你們在天上的父。",
+        "馬太福音 5:16": "你們的光也當這樣照在人前，叫他們看見你們的好行為，便將榮榮歸給你們在天上的父。",
         "馬太福音 6:33": "你們要先求祂的國和祂的義，這些東西都要加給你們了。",
         "馬太福音 6:34": "所以，不要為明天憂慮，因為明天自有明天的憂慮；一天的難處一天當就夠了。",
         "馬太福音 22:37-39": "耶穌對他說：「你要盡心、盡性、盡意愛主——你的上帝。這是誡命中的第一，且是最大的。其次也相倣，就是要愛人如己。",
@@ -342,7 +342,14 @@
 
     const punctRegex = /[，。；：！？、「」『』（）…—\s\,\\.\\!\\?]/;
 
-    // 預設示範數據，確保新訪客一進來就有熱門榜單可參考
+    // 常用異體字正規化：容許「裡/裏」與「著/着」互通
+    function normalizeChar(c) {
+        if (!c) return "";
+        if (c === '裡') return '裏';
+        if (c === '著') return '着';
+        return c;
+    }
+
     let defaultWrongStats = { "馬太福音 22:37-39": 5, "約翰一書 2:15-16": 4, "腓立比書 2:3-4": 3, "提摩太後書 3:16-17": 3, "加拉太書 5:22-23": 2 };
     let defaultFavStats = { "約翰福音 3:16": 8, "箴言 3:5-6": 6, "羅馬書 8:28": 5, "詩篇 119:11": 4, "馬太福音 6:33": 4 };
 
@@ -354,16 +361,30 @@
         populateVerseSelect();
         updateDashboard();
         loadRandomPracticeVerse();
+
+        // ⌨️ 全域按鍵監聽：當出現 Next 按鈕時，按下 Enter 鍵可直接跳下一題
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const practiceNextBtn = document.getElementById('btnPracticeNext');
+                const gameNextBtn = document.getElementById('btnGameNext');
+
+                if (practiceNextBtn && practiceNextBtn.style.display !== 'none') {
+                    e.preventDefault();
+                    loadRandomPracticeVerse();
+                } else if (gameNextBtn && gameNextBtn.style.display !== 'none') {
+                    e.preventDefault();
+                    nextQuestion();
+                }
+            }
+        });
     };
 
     function updateDashboard() {
-        // 最常答錯 Top 5
         const topWrong = Object.entries(wrongStats).sort((a,b) => b[1] - a[1]).slice(0, 5);
         const wrongEl = document.getElementById('globalWrongRank');
         wrongEl.innerHTML = topWrong.length > 0 ? 
             topWrong.map(([k, v]) => `<li onclick="selectVerseDirectly('${k}')" title="點擊練習">${k}</li>`).join('') : '<li>尚無數據</li>';
 
-        // 最喜愛 Top 5
         const topFav = Object.entries(favStats).sort((a,b) => b[1] - a[1]).slice(0, 5);
         const favEl = document.getElementById('globalFavRank');
         favEl.innerHTML = topFav.length > 0 ? 
@@ -616,12 +637,7 @@
                 const el = document.getElementById(`pracCharInput_${i}`);
                 let val = el ? el.value.trim() : "";
                 let expected = practiceTargetAnswers[i];
-                
-                // 支援 「著/着」 與 「裡/裏」 互通
-                let normVal = val.replace(/著/g, '着').replace(/裡/g, '裏');
-                let normExp = expected.replace(/著/g, '着').replace(/裡/g, '裏');
-                
-                if (normVal !== normExp) { isAllCorrect = false; break; }
+                if (normalizeChar(val) !== normalizeChar(expected)) { isAllCorrect = false; break; }
             }
         }
 
@@ -860,12 +876,7 @@
                 const el = document.getElementById(`gameCharInput_${i}`);
                 let val = el ? el.value.trim() : "";
                 let expected = gameTargetAnswers[i];
-                
-                // 支援 「著/着」 與 「裡/裏」 互通
-                let normVal = val.replace(/著/g, '着').replace(/裡/g, '裏');
-                let normExp = expected.replace(/著/g, '着').replace(/裡/g, '裏');
-                
-                if (normVal !== normExp) { isAllCorrect = false; break; }
+                if (normalizeChar(val) !== normalizeChar(expected)) { isAllCorrect = false; break; }
             }
         }
 
