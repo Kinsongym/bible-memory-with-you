@@ -859,6 +859,8 @@
                 let expected = gameTargetAnswers[i];
                 let normVal = (val === '裡') ? '裏' : val;
                 let normExp = (expected === '裡') ? '裏' : expected;
+                let normVal = (val === '着') ? '著' : val;
+                let normExp = (expected === '着') ? '著' : expected;
                 if (normVal !== normExp) { isAllCorrect = false; break; }
             }
         }
