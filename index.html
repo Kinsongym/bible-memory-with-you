@@ -616,8 +616,11 @@
                 const el = document.getElementById(`pracCharInput_${i}`);
                 let val = el ? el.value.trim() : "";
                 let expected = practiceTargetAnswers[i];
-                let normVal = (val === '裡') ? '裏' : val;
-                let normExp = (expected === '裡') ? '裏' : expected;
+                
+                // 支援 「著/着」 與 「裡/裏」 互通
+                let normVal = val.replace(/著/g, '着').replace(/裡/g, '裏');
+                let normExp = expected.replace(/著/g, '着').replace(/裡/g, '裏');
+                
                 if (normVal !== normExp) { isAllCorrect = false; break; }
             }
         }
@@ -857,8 +860,11 @@
                 const el = document.getElementById(`gameCharInput_${i}`);
                 let val = el ? el.value.trim() : "";
                 let expected = gameTargetAnswers[i];
-                let normVal = (val === '裡') ? '裏' : val;
-                let normExp = (expected === '裡') ? '裏' : expected;
+                
+                // 支援 「著/着」 與 「裡/裏」 互通
+                let normVal = val.replace(/著/g, '着').replace(/裡/g, '裏');
+                let normExp = expected.replace(/著/g, '着').replace(/裡/g, '裏');
+                
                 if (normVal !== normExp) { isAllCorrect = false; break; }
             }
         }
