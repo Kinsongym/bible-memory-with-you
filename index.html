@@ -99,7 +99,7 @@
 
         .tab-group {
             display: flex; background: #f1f5f9; padding: 4px;
-            border-radius: 12px; margin-bottom: 20px;
+            border-radius: 12px; margin-bottom: 16px;
         }
 
         .tab-btn {
@@ -111,6 +111,32 @@
         .tab-btn.active {
             background: #ffffff; color: var(--primary-color);
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        /* 輸入模式切換 (點擊選字 / 鍵盤打字) */
+        .input-mode-toggle {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .mode-chip {
+            padding: 4px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-chip.active {
+            background: var(--primary-color);
+            color: white;
         }
 
         .select-group { margin-bottom: 16px; }
@@ -151,6 +177,47 @@
             border-radius: 14px; background: #ffffff; border: 1.5px dashed var(--border-color);
         }
 
+        /* 🧩 選字區塊（Word Bank）樣式 */
+        .word-bank-container {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f1f5f9;
+            border-radius: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            min-height: 60px;
+            align-items: center;
+        }
+        .word-chip {
+            background: #ffffff;
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 6px 14px;
+            border-radius: 10px;
+            border: 1.5px solid #cbd5e1;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .word-chip:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+        }
+        .word-chip:active {
+            transform: scale(0.95);
+        }
+        .word-chip.used {
+            opacity: 0.2;
+            pointer-events: none;
+            transform: scale(0.9);
+            box-shadow: none;
+        }
+
         .btn-play {
             width: 100%; padding: 14px; background: var(--success-color); color: white;
             font-size: 1.1rem; font-weight: 700; border: none; border-radius: 12px;
@@ -183,13 +250,13 @@
             width: 2em; height: 1.5em; text-align: center; font-size: 1.1rem; font-weight: 700;
             border: none; border-bottom: 2.5px solid var(--primary-color); background: #f1f5f9;
             color: var(--primary-color); outline: none; border-radius: 4px; margin: 0 2px;
-            vertical-align: baseline; transition: all 0.2s;
+            vertical-align: baseline; transition: all 0.2s; cursor: pointer;
         }
 
         .inline-num-input {
             width: 2.3em; height: 1.4em; text-align: center; font-size: 0.95rem; font-weight: 700;
             border: none; border-bottom: 2px solid var(--accent-color); background: #ffffff;
-            color: var(--accent-color); outline: none; border-radius: 4px; margin: 0 2px;
+            color: var(--accent-color); outline: none; border-radius: 4px; margin: 0 2px; cursor: pointer;
         }
 
         .inline-char-input:focus, .inline-num-input:focus {
@@ -237,6 +304,13 @@
         </div>
     </div>
 
+    <!-- 🎮 輸入模式切換器 -->
+    <div class="input-mode-toggle">
+        <span>答題方式：</span>
+        <div class="mode-chip active" id="modeClick" onclick="setInputMode('click')">👆 點擊選字</div>
+        <div class="mode-chip" id="modeType" onclick="setInputMode('type')">⌨️ 鍵盤打字</div>
+    </div>
+
     <div class="tab-group">
         <button class="tab-btn active" id="tabPractice" onclick="switchTab('practice')">📖 自由練習</button>
         <button class="tab-btn" id="tabGame" onclick="switchTab('game')">⏱️ 遊戲計時 Play</button>
@@ -260,6 +334,9 @@
         </div>
 
         <div class="bible-display" id="displayText"></div>
+
+        <!-- 🧩 練習模式點擊選字區塊 -->
+        <div class="word-bank-container" id="practiceWordBank" style="display: none;"></div>
 
         <div class="feedback-msg" id="practiceFeedback">🎉 非常好！再來一句吧！</div>
         <button class="btn-next" id="btnPracticeNext" onclick="loadRandomPracticeVerse()">Next 下一句 ➔ (Enter)</button>
@@ -287,6 +364,9 @@
             </div>
 
             <div class="bible-display" id="gameVerseText"></div>
+
+            <!-- 🧩 遊戲模式點擊選字區塊 -->
+            <div class="word-bank-container" id="gameWordBank" style="display: none;"></div>
 
             <button class="btn-next" id="btnGameNext" onclick="nextQuestion()">完全正確！Next 下一句 ➔ (Enter)</button>
             <button class="btn-skip" id="btnGameSkip" onclick="skipQuestion()">Skip 往下一句 ↷</button>
@@ -362,6 +442,7 @@
     };
 
     const punctRegex = /[，。；：！？、「」『』（）…—\s\,\\.\\!\\?]/;
+    const dummyChars = "神愛福光道義信愛真光能恩生主天心善和平忍耐權柄能力愛心事常路生命智";
 
     function normalizeChar(c) {
         if (!c) return "";
@@ -377,12 +458,14 @@
     let favStats = JSON.parse(localStorage.getItem('bible_fav_stats')) || defaultFavStats;
     let favorites = JSON.parse(localStorage.getItem('bible_favorites')) || ["約翰福音 3:16", "箴言 3:5-6"];
 
+    let inputMode = "click"; // "click" (點擊選字) 或 "type" (鍵盤打字)
+    let currentTab = "practice";
+
     window.onload = function() {
         populateVerseSelect();
         updateDashboard();
         loadRandomPracticeVerse();
 
-        // ⌨️ 全域按鍵監聽：當出現 Next 按鈕時，按下 Enter 鍵可直接跳下一題並自動聚焦
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 const practiceNextBtn = document.getElementById('btnPracticeNext');
@@ -399,8 +482,20 @@
         });
     };
 
-    // 🎯 自動聚焦通用函式：自動尋找目前模式中的第一個輸入框並停入游標
+    function setInputMode(mode) {
+        inputMode = mode;
+        document.getElementById('modeClick').classList.toggle('active', mode === 'click');
+        document.getElementById('modeType').classList.toggle('active', mode === 'type');
+
+        if (currentTab === 'practice') {
+            renderPracticeView();
+        } else if (currentTab === 'game' && document.getElementById('gamePlay').style.display === 'block') {
+            nextQuestion();
+        }
+    }
+
     function focusFirstInput(mode = 'practice') {
+        if (inputMode !== 'type') return;
         setTimeout(() => {
             const prefix = mode === 'practice' ? 'prac' : 'game';
             const numInputs = mode === 'practice' ? practiceNumInputsData : gameNumInputsData;
@@ -434,6 +529,7 @@
     }
 
     function switchTab(tab) {
+        currentTab = tab;
         document.getElementById('tabPractice').classList.toggle('active', tab === 'practice');
         document.getElementById('tabGame').classList.toggle('active', tab === 'game');
         document.getElementById('practiceView').style.display = tab === 'practice' ? 'block' : 'none';
@@ -460,7 +556,7 @@
         for (let key in adminDatabase) {
             let option = document.createElement("option");
             option.value = key;
-            option.textContent = (favorites.includes(key) ? "❤️ " : "") + key;
+            option.textContent = (favorites.includes(key) ? "❤️️ " : "") + key;
             selectEl.appendChild(option);
         }
     }
@@ -526,6 +622,7 @@
         if (practiceMode === 'full') {
             document.getElementById('practiceVerseTitle').innerText = currentPracticeKey;
             document.getElementById('btnPracticeSkip').style.display = 'none';
+            document.getElementById('practiceWordBank').style.display = 'none';
             let html = "";
             for (let char of currentPracticeText) {
                 if (punctRegex.test(char)) html += `<span style="color:var(--text-muted);">${char}</span>`;
@@ -556,7 +653,7 @@
                 if (/^\d+$/.test(token)) {
                     if (hiddenIndices.includes(idx)) {
                         const inputId = `pracNumInput_${numCounter}`;
-                        titleHtml += `<input type="number" class="inline-num-input" id="${inputId}" autocomplete="off" data-expected="${token}">`;
+                        titleHtml += `<input type="number" class="inline-num-input" id="${inputId}" autocomplete="off" data-expected="${token}" ${inputMode === 'click' ? 'readonly' : ''}>`;
                         practiceNumInputsData.push({ id: inputId, expected: token });
                         numCounter++;
                     } else titleHtml += token;
@@ -585,7 +682,7 @@
             if (punctRegex.test(char)) {
                 gameHtml += `<span style="color:var(--text-muted);">${char}</span>`;
             } else if (targetIndices.includes(i)) {
-                gameHtml += `<input type="text" class="inline-char-input" id="pracCharInput_${inputCounter}" autocomplete="off">`;
+                gameHtml += `<input type="text" class="inline-char-input" id="pracCharInput_${inputCounter}" autocomplete="off" ${inputMode === 'click' ? 'readonly' : ''}>`;
                 inputCounter++;
             } else { gameHtml += char; }
         }
@@ -593,11 +690,144 @@
         document.getElementById('displayText').innerHTML = gameHtml;
         bindPracticeInputEvents(inputCounter);
 
-        // 🎯 載入後自動聚焦第一個空格
-        focusFirstInput('practice');
+        if (inputMode === 'click') {
+            setupWordBank('practice', inputCounter);
+        } else {
+            document.getElementById('practiceWordBank').style.display = 'none';
+            focusFirstInput('practice');
+        }
+    }
+
+    /* 🧩 建立點擊選字區塊 (Word Bank) */
+    function setupWordBank(mode, totalCharInputs) {
+        const bankContainer = document.getElementById(mode === 'practice' ? 'practiceWordBank' : 'gameWordBank');
+        bankContainer.style.display = 'flex';
+        bankContainer.innerHTML = '';
+
+        const numInputs = mode === 'practice' ? practiceNumInputsData : gameNumInputsData;
+        const charAnswers = mode === 'practice' ? practiceTargetAnswers : gameTargetAnswers;
+
+        let bankItems = [];
+
+        // 加入數字選項 + 隨機干擾數字
+        numInputs.forEach(item => {
+            bankItems.push({ val: item.expected, type: 'num' });
+            let dummyNum = (parseInt(item.expected) + Math.floor(Math.random() * 5) + 1).toString();
+            bankItems.push({ val: dummyNum, type: 'num' });
+        });
+
+        // 加入正確文字
+        charAnswers.forEach(char => {
+            bankItems.push({ val: char, type: 'char' });
+        });
+
+        // 加入隨機干擾文字
+        let extraCount = Math.max(3, 10 - bankItems.length);
+        for (let i = 0; i < extraCount; i++) {
+            let randChar = dummyChars[Math.floor(Math.random() * dummyChars.length)];
+            bankItems.push({ val: randChar, type: 'char' });
+        }
+
+        // 打亂順序
+        bankItems.sort(() => 0.5 - Math.random());
+
+        // 渲染選字按鈕
+        bankItems.forEach((item, idx) => {
+            let chip = document.createElement('div');
+            chip.className = 'word-chip';
+            chip.innerText = item.val;
+            chip.dataset.val = item.val;
+            chip.dataset.type = item.type;
+            chip.id = `${mode}Chip_${idx}`;
+            chip.onclick = () => onChipClick(mode, chip, totalCharInputs);
+            bankContainer.appendChild(chip);
+        });
+
+        // 綁定輸入框點擊：點擊可取消填入，退回選字區
+        numInputs.forEach(item => {
+            const inputEl = document.getElementById(item.id);
+            if (inputEl) {
+                inputEl.onclick = () => clearInputAndRestoreChip(mode, inputEl, totalCharInputs);
+            }
+        });
+
+        for (let i = 0; i < totalCharInputs; i++) {
+            const inputEl = document.getElementById(`${mode === 'practice' ? 'prac' : 'game'}CharInput_${i}`);
+            if (inputEl) {
+                inputEl.onclick = () => clearInputAndRestoreChip(mode, inputEl, totalCharInputs);
+            }
+        }
+    }
+
+    function onChipClick(mode, chip, totalCharInputs) {
+        if (chip.classList.contains('used')) return;
+
+        const val = chip.dataset.val;
+        const type = chip.dataset.type;
+        const numInputs = mode === 'practice' ? practiceNumInputsData : gameNumInputsData;
+        const prefix = mode === 'practice' ? 'prac' : 'game';
+
+        let targetInput = null;
+
+        if (type === 'num') {
+            for (let item of numInputs) {
+                const el = document.getElementById(item.id);
+                if (el && el.value === '') {
+                    targetInput = el;
+                    break;
+                }
+            }
+        }
+
+        if (!targetInput) {
+            for (let i = 0; i < totalCharInputs; i++) {
+                const el = document.getElementById(`${prefix}CharInput_${i}`);
+                if (el && el.value === '') {
+                    targetInput = el;
+                    break;
+                }
+            }
+        }
+
+        if (targetInput) {
+            targetInput.value = val;
+            targetInput.dataset.chipId = chip.id;
+            chip.classList.add('used');
+
+            if (mode === 'practice') checkPracticeAnswer(totalCharInputs);
+            else checkGameAnswer(totalCharInputs);
+        }
+    }
+
+    function clearInputAndRestoreChip(mode, inputEl, totalCharInputs) {
+        if (inputMode !== 'click' || !inputEl.value) return;
+
+        const chipId = inputEl.dataset.chipId;
+        if (chipId) {
+            const chip = document.getElementById(chipId);
+            if (chip) chip.classList.remove('used');
+        } else {
+            // 若找不對應，直接解除第一個符合文字的區塊
+            const bankContainer = document.getElementById(mode === 'practice' ? 'practiceWordBank' : 'gameWordBank');
+            const chips = bankContainer.querySelectorAll('.word-chip.used');
+            for (let chip of chips) {
+                if (chip.innerText === inputEl.value) {
+                    chip.classList.remove('used');
+                    break;
+                }
+            }
+        }
+
+        inputEl.value = '';
+        delete inputEl.dataset.chipId;
+
+        if (mode === 'practice') checkPracticeAnswer(totalCharInputs);
+        else checkGameAnswer(totalCharInputs);
     }
 
     function bindPracticeInputEvents(totalCharInputs) {
+        if (inputMode === 'click') return;
+
         practiceNumInputsData.forEach((item, idx) => {
             const el = document.getElementById(item.id);
             if (!el) return;
@@ -685,6 +915,7 @@
                 if (el) el.classList.add('correct');
             }
 
+            document.getElementById('practiceWordBank').style.display = 'none';
             document.getElementById('practiceFeedback').style.display = 'block';
             document.getElementById('btnPracticeNext').style.display = 'block';
             document.getElementById('btnPracticeSkip').style.display = 'none';
@@ -694,7 +925,7 @@
     /* ================= 遊戲計時模式 ================= */
     let timer = null;
     let timeRemaining = 0;
-    let chosenMinutes = 1; // 紀錄使用者選擇的分鐘數
+    let chosenMinutes = 1;
     let score = 0;
     let gameTargetAnswers = [];
     let gameNumInputsData = [];
@@ -743,8 +974,8 @@
     function endGame() {
         document.getElementById('gamePlay').style.display = 'none';
         document.getElementById('gameResult').style.display = 'block';
-        document.getElementById('finalTime').innerText = chosenMinutes; // 顯示答題時間
-        document.getElementById('finalScore').innerText = score;        // 顯示答對題數
+        document.getElementById('finalTime').innerText = chosenMinutes;
+        document.getElementById('finalScore').innerText = score;
         updateDashboard();
     }
 
@@ -790,7 +1021,7 @@
                 if (/^\d+$/.test(token)) {
                     if (hiddenIndices.includes(idx)) {
                         const inputId = `gameNumInput_${numCounter}`;
-                        titleHtml += `<input type="number" class="inline-num-input" id="${inputId}" autocomplete="off" data-expected="${token}">`;
+                        titleHtml += `<input type="number" class="inline-num-input" id="${inputId}" autocomplete="off" data-expected="${token}" ${inputMode === 'click' ? 'readonly' : ''}>`;
                         gameNumInputsData.push({ id: inputId, expected: token });
                         numCounter++;
                     } else titleHtml += token;
@@ -819,7 +1050,7 @@
             if (punctRegex.test(char)) {
                 gameHtml += `<span style="color:var(--text-muted);">${char}</span>`;
             } else if (targetIndices.includes(i)) {
-                gameHtml += `<input type="text" class="inline-char-input" id="gameCharInput_${inputCounter}" autocomplete="off">`;
+                gameHtml += `<input type="text" class="inline-char-input" id="gameCharInput_${inputCounter}" autocomplete="off" ${inputMode === 'click' ? 'readonly' : ''}>`;
                 inputCounter++;
             } else { gameHtml += char; }
         }
@@ -827,11 +1058,17 @@
         document.getElementById('gameVerseText').innerHTML = gameHtml;
         bindGameInputEvents(inputCounter);
 
-        // 🎯 遊戲模式下一題：自動聚焦第一個空格
-        focusFirstInput('game');
+        if (inputMode === 'click') {
+            setupWordBank('game', inputCounter);
+        } else {
+            document.getElementById('gameWordBank').style.display = 'none';
+            focusFirstInput('game');
+        }
     }
 
     function bindGameInputEvents(totalCharInputs) {
+        if (inputMode === 'click') return;
+
         gameNumInputsData.forEach((item, idx) => {
             const el = document.getElementById(item.id);
             if (!el) return;
@@ -921,6 +1158,7 @@
 
             score++;
             document.getElementById('scoreCount').innerText = score;
+            document.getElementById('gameWordBank').style.display = 'none';
             document.getElementById('btnGameNext').style.display = 'block';
             document.getElementById('btnGameSkip').style.display = 'none';
         }
